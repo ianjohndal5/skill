@@ -144,19 +144,44 @@ app.get('/getallcandidates', (req,res)=> {
 
 app.post('/addcandidate', (req,res)=>{
     const {canFName, canMName, canLName, posID} = req.body;
-    db.query('SELECT * FROM positions', (error, result)=>{
-        if(result.length > 0){
-            db.query('INSERT INTO candidates(canFName, canMName, canLName, posID) VALUES(?,?,?,?)', [canFName, canMName, canLName, posID], (error, result)=>{
-                if(error){
-                    res.status(500).json({error: error.message})
-                } else {
-                    res.status(200).json(result)
-                }
-            })
-        } else {
-            return res.status(401).json({error: 'No positions are available yet'})
+    db.query(`
+    SELECT 
+        p.posID,
+        p.numOfPostions,
+        COUNT(c.candID) as occupying
+    FROM 	positions p
+    LEFT JOIN candidates c ON c.posID = p.posID
+    GROUP BY p.posID;
+    `,(error, result)=>{
+        if(error){
+            return res.status(500).json({error: error.message})
         }
+        if(result.length <= 0){
+            return res.status(404).json({error: 'No Position is available'})
+        }
+        const position = result.find(row => row.posID === posID);
+        if(!position){
+            return res.status(404).json({error: 'Position not found'})
+        }
+        if(position.occupying >= position.numOfPostion){
+            return res.status(401).json({error: 'Position is full'})
+        }        
+        db.query('SELECT * FROM positions', (error, result)=>{
+            if(result.length > 0){
+                db.query('INSERT INTO candidates(canFName, canMName, canLName, posID) VALUES(?,?,?,?)', [canFName, canMName, canLName, posID], (error, result)=>{
+                    if(error){
+                        res.status(500).json({error: error.message})
+                    } else {
+                        res.status(200).json(result)
+                    }
+                })
+            } else {
+                return res.status(401).json({error: 'No positions are available yet'})
+            }
+        })
+    
     })
+    
     
 })
 
@@ -186,12 +211,14 @@ app.get('/getallvotes', (req, res)=>{
 
 app.post('/login', (req,res)=>{
     const {voterID, voterPass} = req.body;
+    
     db.query('SELECT * FROM voters WHERE voterID = ? AND voterPass = ?', [voterID, voterPass], (error, result) => {
         if(error){
             return res.status(500).json({error: error.message})
         } 
         if(result.length > 0){
             res.status(200).json(result)
+            
         } else {
             res.status(401).json({error: 'Voter not found. Please create one'})
         }
@@ -215,13 +242,28 @@ app.get('/getallpositionswithcandidates', (req,res)=>{
 
 app.post('/vote', (req,res)=>{
     const {posID, voterID, candID} = req.body;
-    db.query('INSERT INTO votes(posID, voterID, candID) VALUES(?,?,?)', [posID, voterID, candID], (error, result)=>{
-        if(error){
-            res.status(500).json({error: error.message})
+    const voted = "Y";
+    db.query('SELECT voted FROM voters WHERE voterID = ?', [voterID], (error, result)=>{
+        if(result.length > 0 && result[0].voted === 'Y'){
+            res.status(401).json({error: 'Voter Already Voted'})
         } else {
-            res.status(200).json(result)
+            db.query('INSERT INTO votes(posID, voterID, candID) VALUES(?,?,?)', [posID, voterID, candID], (error, result)=>{
+                if(error){
+                    res.status(500).json({error: error.message})
+                } else {
+                    
+                    db.query('UPDATE voters SET voted =? WHERE voterID =?', [voted, voterID], (error, result)=>{
+                        if(error){
+                            res.status(500).json({error: error.message})
+                        } else {
+                            res.status(200).json(result)
+                        }
+                    })
+                }
+            })
         }
     })
+    
 })
 
 app.get('/getelectionresult', (req,res)=>{

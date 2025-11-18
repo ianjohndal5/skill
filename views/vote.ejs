@@ -13,13 +13,17 @@
         <input type="password" name="voterPass" id="voterPass" placeholder="Enter your password">
         <input type="submit" value="LOGIN">
     </form>
-
+    <button onclick="logout()">LOGOUT</button>
     <form id="voting-form" onsubmit="submitVote(event)" style="display: none;">
         <div id="position-container"></div>
         <input type="submit" value="VOTE">
     </form>
 </body>
 <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+        staylogin()
+    })
+    let poponce = false;
     let currentVoter = null;
     let selectedVotes = {};
 
@@ -41,13 +45,27 @@
             if(result.length > 0){
                 alert('Login Successful')
                 currentVoter = result[0].voterID;
-                console.log('Current Voter:', currentVoter)
-                document.getElementById('voting-form').style.display = 'block';
+                localStorage.setItem('voterid', result[0].voterID)
+                console.log('Current Voter:', result[0].voterID)
+                staylogin()
                 loadPositionsAndCandidates()
             } else {
                 alert(result.error)
             }
         })
+    }
+
+    function staylogin(){
+        const voterid = localStorage.getItem('voterid')
+        
+        if (voterid.length > 0){
+            loadPositionsAndCandidates()
+            document.getElementById('voting-form').style.display = 'block';
+        } else {
+            console.log('Please login first')
+            document.getElementById('position-container').style.display = 'none';
+
+        }
     }
 
     function loadPositionsAndCandidates(){
@@ -86,10 +104,19 @@
         })
     }
 
+    function logout(){
+        localStorage.removeItem('voterid')
+        poponce = !poponce;
+    }
+
     function submitVote(e){
         e.preventDefault();
         const radios = document.querySelectorAll('input[type="radio"]:checked');
-
+        
+        if(!poponce){
+            alert('Voter is not elegible to vote')
+        } 
+        const voterid = localStorage.getItem('voterid')
         radios.forEach(radio => {
             fetch('/vote', {
                 method: 'POST',
@@ -97,15 +124,15 @@
                     'Content-Type' : 'application/json'
                 },
                 body: JSON.stringify({
-                    voterID: currentVoter,
+                    voterID: voterid,
                     posID: radio.name,
                     candID: radio.value
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if(data.success) {
-                    alert('Voted Succesfull!')
+                if (!data.error) {
+                    poponce = !poponce;
                 }
             })
         })
