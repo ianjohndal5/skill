@@ -1,6 +1,5 @@
 import mysql from 'mysql';
 import express from 'express';
-import { resourceLimits } from 'worker_threads';
 const app = express();
 const PORT = 4000;
 
