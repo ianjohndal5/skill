@@ -42,7 +42,6 @@
         .then(result => {
             if(result.length > 0){
                 alert('Login Successful')
-                currentVoter = result[0].voterID;
                 localStorage.setItem('voterid', result[0].voterID)
                 console.log('Current Voter:', result[0].voterID)
                 staylogin()
@@ -105,6 +104,7 @@
     function logout(){
         localStorage.removeItem('voterid')
         poponce = !poponce;
+        window.location.href = '/';
     }
 
     function submitVote(e){
