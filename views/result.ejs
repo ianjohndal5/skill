@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <a href="/">Home</a>
+    <a href="/vote">Vote</a>
+    <a href="/viewwinner">Winner</a>
+    <div id="result-container"></div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+        getResult()
+    })
+    
+    function getResult(){
+        fetch('/getelectionresult')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('result-container')
+            const position = {}
+
+            data.forEach(row => {
+                if(!position[row.posName]){
+                    position[row.posName] = {
+                        posName : row.posName,
+                        candidates : []
+                    }
+                };
+                if(row.fullname){
+                    position[row.posName].candidates.push({
+                        totalvotes : row.totalvotes,
+                        fullname : row.fullname,
+                        percentage : row.percentage
+                    })
+                };
+            })
+
+            container.innerHTML = Object.entries(position).map(([posName, pos])=> `
+                <h2>${pos.posName}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Candidate name</th>
+                            <th>Total Votes</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pos.candidates.map(cand => `
+                            <tr>
+                                <td>${cand.fullname}</td>
+                                <td>${cand.totalvotes}</td>
+                                <td>${cand.percentage}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `).join('');
+            
+        })
+    }
+</script>
+</html>

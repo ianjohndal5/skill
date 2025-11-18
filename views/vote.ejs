@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <a href="/">Home</a>
+    <a href="/viewresult">Results</a>
+    <form onsubmit="login(event)">
+        <input type="text" name="voterID" id="voterID" placeholder="Enter Voter ID">
+        <input type="password" name="voterPass" id="voterPass" placeholder="Enter your password">
+        <input type="submit" value="LOGIN">
+    </form>
+
+    <form id="voting-form" onsubmit="submitVote(event)" style="display: none;">
+        <div id="position-container"></div>
+        <input type="submit" value="VOTE">
+    </form>
+</body>
+<script>
+    let currentVoter = null;
+    let selectedVotes = {};
+
+    function login(e){
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form)
+        const data = Object.fromEntries(formData)
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type' : 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if(result.length > 0){
+                alert('Login Successful')
+                currentVoter = result[0].voterID;
+                console.log('Current Voter:', currentVoter)
+                document.getElementById('voting-form').style.display = 'block';
+                loadPositionsAndCandidates()
+            } else {
+                alert(result.error)
+            }
+        })
+    }
+
+    function loadPositionsAndCandidates(){
+        fetch('/getallpositionswithcandidates')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('position-container');
+            const position = {}
+
+            data.forEach(row =>{
+                if(!position[row.posID]){
+                    position[row.posID] = {
+                        posID: row.posID,
+                        posName: row.posName,
+                        candidates: []
+                    };
+                }
+                if(row.candID){
+                    position[row.posID].candidates.push({
+                        candID : row.candID,
+                        name : `${row.canFName} ${row.canMName} ${row.canLName}`
+                    })
+                }
+            })
+            container.innerHTML = Object.entries(position).map(([posID, pos]) =>`
+                <div>
+                    <h3>${pos.posName}</h3>
+                    ${pos.candidates.map(cand => `
+                        <label>
+                            <input type="radio" name="${posID}" value="${cand.candID}">
+                            ${cand.name}
+                        </label>
+                    `).join('')}
+                </div>
+            `).join('');
+        })
+    }
+
+    function submitVote(e){
+        e.preventDefault();
+        const radios = document.querySelectorAll('input[type="radio"]:checked');
+
+        radios.forEach(radio => {
+            fetch('/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type' : 'application/json'
+                },
+                body: JSON.stringify({
+                    voterID: currentVoter,
+                    posID: radio.name,
+                    candID: radio.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    alert('Voted Succesfull!')
+                }
+            })
+        })
+    }
+</script>
+</html>

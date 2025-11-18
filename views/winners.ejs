@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <a href="/">Home</a>
+    <a href="/vote">Vote</a>
+    <div id="winner-container"></div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+        getWinner();
+    })
+     function getWinner(){
+        fetch('/getwinners')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('winner-container')
+            const position = {}
+
+            data.forEach(row => {
+                if(!position[row.posName]){
+                    position[row.posName] = {
+                        posName : row.posName,
+                        candidates : []
+                    }
+                }
+                if(row.winner){
+                    position[row.posName].candidates.push({
+                        posName : row.posName,
+                        winner : row.winner,
+                        totalvotes : row.totalvotes
+                    })
+                }
+            })
+
+            container.innerHTML =`
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Elective Position</th>
+                            <th>Winner</th>
+                            <th>Total Votes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(position).map(([posName, pos])=>
+                            pos.candidates.map(cand => `
+                                <tr>
+                                    <td>${cand.posName}</td>
+                                    <td>${cand.winner}</td>
+                                    <td>${cand.totalvotes}</td>
+                                </tr>
+                            `).join('')
+                        ).join('')}
+                        </tbody>
+                </table>
+            `
+        })
+     }
+</script>
+</html>
